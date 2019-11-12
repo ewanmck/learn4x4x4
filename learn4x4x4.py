@@ -3,6 +3,9 @@ import sys
 import random
 import pprint
 
+CURSOR_UP_ONE = '\x1b[1A'
+ERASE_LINE = '\x1b[2K'
+
 class Position:
     def __init__(self, x, y, z):
         self.x = x
@@ -18,15 +21,28 @@ class Board:
     def print_board(self):
     	pprint.pprint(self.board)
 
+def print_floats(board):
+
+    string = ""
+    for z in range(4):
+        level_count = 'Level: ' + str(z)
+        print(level_count)
+        for y in range(4):
+            string += '[ ' + str(board.board[0][y][z]) + ', ' + str(board.board[1][y][z]) + ', ' + str(board.board[2][y][z]) + ', ' + str(board.board[2][y][z]) + ']'
+            print("[ %1.3f, %1.3f, %1.3f, %1.3f ]" % (board.board[0][y][z], board.board[1][y][z], board.board[2][y][z], board.board[3][y][z]))
+            string = ""
 
 #sums up rewards of making a move in a position on the board
 def find_rewards(board, player, position):
     reward_sum = 0
     player_positions = []
+    opp_positions = []
     if player is "X":
         player_positions = board.x_positions
+        opp_positions = board.o_positions
     else:
         player_positions = board.o_positions
+        opp_positions = board.x_positions
 
     for current_positions in player_positions:
         if current_positions.x == position.x:
@@ -35,6 +51,14 @@ def find_rewards(board, player, position):
             reward_sum += 1
         if current_positions.z == position.z:
             reward_sum += 1
+
+    for current_positions in opp_positions:
+        if current_positions.x == position.x:
+            reward_sum += 2
+        if current_positions.y == position.y:
+            reward_sum += 2
+        if current_positions.z == position.z:
+            reward_sum += 2
 
     return reward_sum
 
@@ -121,6 +145,15 @@ def find_terminal(board, player):
     if assumption:
         return True
 
+    assumption = True
+    for x in range (4):
+        for y in range (4):
+            for z in range(4):
+                if board.board[z][y][x] is None:
+                    assumption = False
+    if assumption:
+        return True
+
     #return false if none of the above cases were true
     return False
 
@@ -180,8 +213,10 @@ set_num_tables(n_count)
 alpha = .7
 discount = .2
 for trials in range(trialsCount[2]):
-    if trials == trialsCount[0] or trials == trialsCount[1] or trials == trialsCount[2]-1:
-        q_count.print_board()
+    if trials == trialsCount[0] or trials == trialsCount[1]:
+        print_floats(q_count)
+        board.print_board()
+        print("eat this")
     board = Board()
     player_1 = "X"
     player_2 = "O"
@@ -230,5 +265,11 @@ for trials in range(trialsCount[2]):
         board.board[set_position_O.x][set_position_O.y][set_position_O.z] = "O"
         board.o_positions.append(set_position_O)
         last_pos_O = set_position_O
-    alpha = alpha / (1 + .1)
-q_count.print_board()
+    alpha = alpha / (1 + .01)
+    trials_counter = str(trials) + '/' + str(trialsCount[2])
+    sys.stdout.write(CURSOR_UP_ONE)
+    sys.stdout.write(ERASE_LINE)
+    print(trials_counter)
+print_floats(q_count)
+board.print_board()
+
