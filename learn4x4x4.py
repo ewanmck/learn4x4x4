@@ -37,6 +37,8 @@ def find_rewards(board, player, position):
     reward_sum = 0
     player_positions = []
     opp_positions = []
+    offensive = 1
+    defensive = 2
     if player is "X":
         player_positions = board.x_positions
         opp_positions = board.o_positions
@@ -44,21 +46,21 @@ def find_rewards(board, player, position):
         player_positions = board.o_positions
         opp_positions = board.x_positions
 
-    for current_positions in player_positions:
-        if current_positions.x == position.x:
-            reward_sum += 1
-        if current_positions.y == position.y:
-            reward_sum += 1
-        if current_positions.z == position.z:
-            reward_sum += 1
+    for current_position in player_positions:
+        if current_position.x == position.x and current_position.y == position.y:
+            reward_sum += offensive
+        if current_position.x == position.x and current_position.z == position.z:
+            reward_sum += offensive
+        if current_position.y == position.y and current_position.z == position.z:
+            reward_sum += offensive
 
-    for current_positions in opp_positions:
-        if current_positions.x == position.x:
-            reward_sum += 2
-        if current_positions.y == position.y:
-            reward_sum += 2
-        if current_positions.z == position.z:
-            reward_sum += 2
+    for current_position in opp_positions:
+        if current_position.x == position.x and current_position.y == position.y:
+            reward_sum += defensive
+        if current_position.x == position.x and current_position.z == position.z:
+            reward_sum += defensive
+        if current_position.y == position.y and current_position.z == position.z:
+            reward_sum += defensive
 
     return reward_sum
 
@@ -211,6 +213,7 @@ set_num_tables(q_count)
 set_num_tables(n_count)
 
 alpha = .7
+exploration_rate = .7
 discount = .2
 for trials in range(trialsCount[2]):
     if trials == trialsCount[0] or trials == trialsCount[1]:
@@ -238,7 +241,7 @@ for trials in range(trialsCount[2]):
 
                         q_count.board[x][y][z] = (1 - alpha) *  q_count.board[x][y][z] + alpha * (find_rewards(board, "X", position) + discount * max_q_prime_val - prev_q)
 
-        set_position_X = random_selector(board, find_max_q(board, "X"), alpha)
+        set_position_X = random_selector(board, find_max_q(board, "X"), exploration_rate)
         board.board[set_position_X.x][set_position_X.y][set_position_X.z] = "X"
         board.x_positions.append(set_position_X)
         last_pos_X = set_position_X
@@ -261,11 +264,11 @@ for trials in range(trialsCount[2]):
 
                         q_count.board[x][y][z] = (1 - alpha) *  q_count.board[x][y][z] + alpha * (find_rewards(board, "O", position) + discount * max_q_prime_val - prev_q)
 
-        set_position_O = random_selector(board, find_max_q(board, "O"), alpha)
+        set_position_O = random_selector(board, find_max_q(board, "O"), exploration_rate)
         board.board[set_position_O.x][set_position_O.y][set_position_O.z] = "O"
         board.o_positions.append(set_position_O)
         last_pos_O = set_position_O
-    alpha = alpha / (1 + .01)
+    exploration_rate = exploration_rate / (1 + .01)
     trials_counter = str(trials) + '/' + str(trialsCount[2])
     sys.stdout.write(CURSOR_UP_ONE)
     sys.stdout.write(ERASE_LINE)
