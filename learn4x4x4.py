@@ -3,15 +3,18 @@ import sys
 import random
 import pprint
 
+#used for console log
 CURSOR_UP_ONE = '\x1b[1A'
 ERASE_LINE = '\x1b[2K'
 
+#class definition for postion object
 class Position:
     def __init__(self, x, y, z):
         self.x = x
         self.y = y
         self.z = z
 
+#class definition for board objects used for games and q table
 class Board:
     def __init__(self):
     	self.board = [[[None for x in range(4)] for y in range(4)] for z in range(4)]
@@ -21,6 +24,7 @@ class Board:
     def print_board(self):
     	pprint.pprint(self.board)
 
+#function used to print a properly formated q table
 def print_floats(board):
 
     string = ""
@@ -37,8 +41,11 @@ def find_rewards(board, player, position):
     reward_sum = 0
     player_positions = []
     opp_positions = []
+
+    #variables used to change weights of offensive vs defensive play
     offensive = 1
     defensive = 2
+
     if player is "X":
         player_positions = board.x_positions
         opp_positions = board.o_positions
@@ -64,6 +71,7 @@ def find_rewards(board, player, position):
 
     return reward_sum
 
+#used to find terminal state of a board
 def find_terminal(board, player):
     #find across rows
     assumption = True
@@ -159,6 +167,7 @@ def find_terminal(board, player):
     #return false if none of the above cases were true
     return False
 
+#finds the position containing the maximum reward given a current board state
 def find_max_reward(board, player):
     position = Position(0, 0, 0)
     current_max_reward = 0
@@ -172,6 +181,7 @@ def find_max_reward(board, player):
                         position = current_position
     return position
 
+#finds the max q value in the current table
 def find_max_q(board, player):
     position = Position(0, 0, 0)
     current_max_q = 0
@@ -185,12 +195,14 @@ def find_max_q(board, player):
                         position = current_position
     return position
 
+#used to initialize q table with 0's
 def set_num_tables(board):
     for z in range (4):
         for y in range(4):
             for x in range(4):
                 board.board[x][y][z] = 0
 
+#randomly selects a position given a acceptence rate, the board, and current position
 def random_selector(board, position, alpha):
     rand = random.random()
     if (rand > alpha):
@@ -204,22 +216,28 @@ def random_selector(board, position, alpha):
         else:
             return random_selector(board, position, alpha)
 
+#take in trial counts as arguments
 trialsCount = [int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])]
 
-#counts of rewards for each position and times position is reached
+#initialize table for q counts
 q_count = Board()
-n_count = Board()
 set_num_tables(q_count)
-set_num_tables(n_count)
 
+#parameters for alpha, discount, and exploration rates
 alpha = .7
 exploration_rate = .7
 discount = .2
+
+#loop until the highest trial count is reached
+#loops through games to update values in the q table to aid learning process
 for trials in range(trialsCount[2]):
+    #print out the q table at each argument given
     if trials == trialsCount[0] or trials == trialsCount[1]:
         print_floats(q_count)
-        board.print_board()
+        #used to make the trial counter work
         print("eat this")
+
+    #initialize board state and important parameters prior to game start
     board = Board()
     player_1 = "X"
     player_2 = "O"
@@ -230,17 +248,21 @@ for trials in range(trialsCount[2]):
             for y in range(4):
                 for x in range(4):
                     if board.board[x][y][z] is None:
+
+                        #variables set to shorten formulas
                         position = Position(x,y,z)
                         max_q_prime = find_max_reward(board, "X")
                         max_q_prime_val = q_count.board[max_q_prime.x][max_q_prime.y][max_q_prime.z]
-                        n_count.board[x][y][z] = n_count.board[x][y][z] + 1
 
+                        #set previous q if it exists
                         prev_q = 0
                         if last_pos_X.x is not None:
                             prev_q = q_count.board[last_pos_X.x][last_pos_X.y][last_pos_X.z]
 
+                        #q count set for the current board position given board state
                         q_count.board[x][y][z] = (1 - alpha) *  q_count.board[x][y][z] + alpha * (find_rewards(board, "X", position) + discount * max_q_prime_val - prev_q)
 
+        #position selected given max q and exploration rate, then set in board and added to list
         set_position_X = random_selector(board, find_max_q(board, "X"), exploration_rate)
         board.board[set_position_X.x][set_position_X.y][set_position_X.z] = "X"
         board.x_positions.append(set_position_X)
@@ -249,6 +271,7 @@ for trials in range(trialsCount[2]):
         if find_terminal(board, "X") or find_terminal(board, "O"):
             break
 
+        #same formula as above used for the opponent
         for z in range (4):
             for y in range(4):
                 for x in range(4):
@@ -256,7 +279,6 @@ for trials in range(trialsCount[2]):
                         position = Position(x,y,z)
                         max_q_prime = find_max_reward(board, "O")
                         max_q_prime_val = q_count.board[max_q_prime.x][max_q_prime.y][max_q_prime.z]
-                        n_count.board[x][y][z] = n_count.board[x][y][z] + 1
 
                         prev_q = 0
                         if last_pos_O.x is not None:
@@ -268,11 +290,16 @@ for trials in range(trialsCount[2]):
         board.board[set_position_O.x][set_position_O.y][set_position_O.z] = "O"
         board.o_positions.append(set_position_O)
         last_pos_O = set_position_O
+
+    #exploration rate lowered as trials increase
     exploration_rate = exploration_rate / (1 + .01)
+
+    #trials counter printed
     trials_counter = str(trials) + '/' + str(trialsCount[2])
     sys.stdout.write(CURSOR_UP_ONE)
     sys.stdout.write(ERASE_LINE)
     print(trials_counter)
+
+#prints q count at the end of loop
 print_floats(q_count)
-board.print_board()
 
